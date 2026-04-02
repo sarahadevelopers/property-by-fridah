@@ -237,7 +237,8 @@ const uploadToCloudinary = (fileBuffer, folder = 'property-by-fridah') => {
     });
 };
 
-// ================= DATABASE CONNECTION =================
+// ================= ENHANCED DATABASE CONNECTION =================
+// ================= ENHANCED DATABASE CONNECTION =================
 const connectWithRetry = async (retries = 5, delay = 5000) => {
     console.log(`🔗 Attempting MongoDB connection (${retries} retries)...`);
     
@@ -245,25 +246,51 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         try {
             console.log(`🔄 Attempt ${i + 1}/${retries}...`);
             
-            await mongoose.connect(MONGODB_URI, {
-                serverSelectionTimeoutMS: 15000,
+            // Enhanced connection options for Render compatibility
+            const connectionOptions = {
+                serverSelectionTimeoutMS: 30000,
                 socketTimeoutMS: 45000,
+                connectTimeoutMS: 30000,
                 maxPoolSize: 10,
                 minPoolSize: 2,
-                connectTimeoutMS: 10000,
                 retryWrites: true,
-                w: 'majority'
-            });
+                w: 'majority',
+                family: 4, // Force IPv4 (critical for Render)
+                heartbeatFrequencyMS: 10000,
+                retryReads: true
+                // Removed keepAlive and keepAliveInitialDelay as they are deprecated
+            };
+            
+            // Log connection attempt (without full URI for security)
+            const uriParts = MONGODB_URI.split('@');
+            console.log(`🔌 Connecting with: ${uriParts[0]}@***`);
+            console.log(`📡 Using IPv4 only (family: 4) for Render compatibility`);
+            
+            await mongoose.connect(MONGODB_URI, connectionOptions);
             
             console.log('✅ MongoDB connected successfully');
             console.log(`📊 Database: ${mongoose.connection.name}`);
             console.log(`📈 Host: ${mongoose.connection.host}`);
             
+            // Test the connection
+            await mongoose.connection.db.admin().ping();
+            console.log('✅ Database ping successful');
+            
             return mongoose.connection;
         } catch (err) {
             console.error(`❌ MongoDB connection attempt ${i + 1} failed:`, err.message);
             
-            if (err.message.includes('ENOTFOUND') || err.message.includes('whitelist')) {
+            // Detailed error analysis
+            if (err.message.includes('Server record does not share hostname')) {
+                console.error('\n⚠️  SRV RECORD MISMATCH ERROR ⚠️');
+                console.error('This means your MongoDB URI doesn\'t match your Atlas cluster.');
+                console.error('\n🔧 SOLUTION:');
+                console.error('1. Go to MongoDB Atlas Dashboard');
+                console.error('2. Click "Connect" on your cluster');
+                console.error('3. Choose "Drivers"');
+                console.error('4. Copy the EXACT connection string provided');
+                console.error('5. Update your MONGODB_URI environment variable\n');
+            } else if (err.message.includes('ENOTFOUND') || err.message.includes('whitelist')) {
                 console.error('\n🚨 MONGODB ATLAS CONNECTION ISSUE 🚨');
                 console.error('==========================================');
                 console.error('Common causes:');
@@ -271,6 +298,10 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
                 console.error('2. Network connectivity issue');
                 console.error('3. Invalid MongoDB URI');
                 console.error('==========================================\n');
+            } else if (err.message.includes('Authentication failed')) {
+                console.error('\n🔐 AUTHENTICATION FAILED');
+                console.error('Username or password is incorrect');
+                console.error('Verify MongoDB Atlas user credentials\n');
             }
             
             if (i === retries - 1) {
@@ -407,6 +438,7 @@ app.get('/', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
 // Health check endpoints
 app.get('/health', (req, res) => {
     res.status(200).json({ 
