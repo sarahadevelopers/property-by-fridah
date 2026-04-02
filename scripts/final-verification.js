@@ -2,7 +2,7 @@
 const axios = require('axios');
 
 async function verifyDeployment() {
-  const baseUrl = process.env.API_URL || 'https://property-by-fridah.onrender.com';
+  const baseUrl = process.env.API_URL || 'https://property-by-fridah-7s1w.onrender.com';
   
   const tests = [
     { name: 'Health Check', endpoint: '/api/properties/health', method: 'GET' },

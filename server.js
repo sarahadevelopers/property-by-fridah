@@ -75,8 +75,8 @@ app.use(helmet({
                 "https://*.render.com",
                 "https://*.mongodb.net",
                 "https://res.cloudinary.com",
-                "https://property-by-fridah.onrender.com",
-                "https://codewithkaranja.github.io",
+                "https://property-by-fridah-7s1w.onrender.com",
+                "https://sarahadevelopers.github.io",
                 "http://localhost:3000",
                 "ws://localhost:*"
             ],
@@ -118,7 +118,7 @@ const corsOptions = {
     origin: [
         'https://propertybyfridah.com',
         'https://www.propertybyfridah.com',
-        'https://property-by-fridah.onrender.com',
+        'https://property-by-fridah-7s1w.onrender.com',
         'https://*.render.com',
         'https://codewithkaranja.github.io',
         'https://*.github.io',
@@ -910,105 +910,50 @@ app.use((err, req, res, next) => {
 });
 
 // ================= SERVER STARTUP =================
+// ================= SERVER STARTUP =================
 const startServer = async () => {
-    try {
-        console.log('\n🚀 Starting PropertyByFridah Server...');
-        
-        // Connect to MongoDB
-        await connectWithRetry();
-        
-        // Start server
-        const server = app.listen(PORT, '0.0.0.0', () => {
-            const dbStatus = mongoose.connection.readyState === 1 
-                ? '✅ CONNECTED' 
-                : '❌ DISCONNECTED';
-            
-            console.log(`
-✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
-🚀 PROPERTY BY FRIDAH ${IS_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT'} SERVER
-✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
+    console.log('\n🚀 Starting PropertyByFridah Server...');
+    
+    // 1. ALWAYS start the HTTP server first, binding to 0.0.0.0
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Server successfully bound to 0.0.0.0:${PORT}`);
+        console.log(`🌐 Health check: https://property-by-fridah-7s1w.onrender.com/health`);
+    });
 
-✅ Server:    Running on port ${PORT} (0.0.0.0)
-🌐 URL:       https://property-by-fridah.onrender.com
-📁 Env:       ${NODE_ENV}
-🗄️ Database:  ${dbStatus}
-☁️  Storage:   Cloudinary (Images)
+    // Required timeout settings for Render
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
 
-🔒 Security:  ✅ ENABLED
-   - Trust Proxy: ✅ Configured for Render
-   - Rate Limit: ${process.env.RATE_LIMIT_MAX_REQUESTS || 200} req/${parseInt(process.env.RATE_LIMIT_WINDOW_MS || 900000) / 60000}min
-   - Helmet: Enabled
-   - CORS: Configured for GitHub Pages
+    // 2. Attempt to connect to MongoDB in the background (do NOT await here)
+    console.log('🔗 Attempting background MongoDB connection...');
+    connectWithRetry().catch(err => {
+        console.error('❌ Background MongoDB connection failed permanently:', err.message);
+        // The server stays running, but /api/health will show DB as down
+    });
 
-🌐 Frontend:  ${process.env.FRONTEND_URL || 'Not specified'}
-🌐 Health:    https://property-by-fridah.onrender.com/health
-
-📊 API Endpoints:
-   - GET    /api/properties           - List all properties
-   - POST   /api/properties/add       - Add new property
-   - GET    /api/properties/:id       - Get property by ID
-   - PATCH  /api/properties/:id       - Update property
-   - DELETE /api/properties/:id       - Delete property
-   - GET    /api/health               - Health check
-   - GET    /api/version              - Version info
-
-✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨
-            `);
+    // Graceful shutdown logic (kept the same)
+    const gracefulShutdown = async (signal) => {
+        console.log(`\n🔻 Received ${signal}. Shutting down gracefully...`);
+        server.close(async () => {
+            console.log('✅ HTTP server closed');
+            if (mongoose.connection.readyState === 1) {
+                await mongoose.connection.close(false);
+                console.log('✅ MongoDB connection closed');
+            }
+            process.exit(0);
         });
+        setTimeout(() => { console.error('❌ Forcing shutdown'); process.exit(1); }, 10000);
+    };
 
-        // Graceful shutdown
-        const gracefulShutdown = async (signal) => {
-            console.log(`\n🔻 Received ${signal}. Shutting down gracefully...`);
-            
-            server.close(async () => {
-                console.log('✅ HTTP server closed');
-                
-                if (mongoose.connection.readyState === 1) {
-                    await mongoose.connection.close(false);
-                    console.log('✅ MongoDB connection closed');
-                }
-                
-                console.log('✅ Server shutdown complete');
-                process.exit(0);
-            });
-            
-            // Force shutdown after 10 seconds
-            setTimeout(() => {
-                console.error('❌ Forcing shutdown after timeout');
-                process.exit(1);
-            }, 10000);
-        };
-
-        // Handle shutdown signals
-        process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-        process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-        process.on('SIGQUIT', () => gracefulShutdown('SIGQUIT'));
-
-        // Handle uncaught errors
-        process.on('uncaughtException', (err) => {
-            console.error('🚨 Uncaught Exception:', err);
-            process.exit(1);
-        });
-
-        process.on('unhandledRejection', (reason, promise) => {
-            console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
-        });
-
-        // Configure server timeouts
-        server.keepAliveTimeout = 65000;
-        server.headersTimeout = 66000;
-
-        return server;
-    } catch (error) {
-        console.error('❌ Failed to start server:', error);
-        process.exit(1);
-    }
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    
+    return server;
 };
 
-// Start the server
+// Start the server (this now runs app.listen IMMEDIATELY)
 if (require.main === module) {
     startServer();
 }
 
-// Export for testing
 module.exports = app;

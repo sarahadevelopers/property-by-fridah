@@ -3,7 +3,7 @@ const Property = require('./models/Property'); // adjust path if needed
 
 // MongoDB connection
 mongoose.connect(
-  'mongodb+srv://propertybyfridah:%23Fridah254@cluster0.joar9ei.mongodb.net/propertyByFridahDB?retryWrites=true&w=majority',
+  'mongodb+srv://propertybyfridah:Fridah254Simple@cluster0.joar9ei.mongodb.net/propertyByFridahDB?retryWrites=true&w=majority',
   {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -33,7 +33,7 @@ function getAvailability(status) {
 }
 
 // Base URL for images
-const baseUrl = 'https://propertybyfridah.com/images/';
+const baseUrl = 'https://sarahadevelopers.github.io/property-by-fridah/images/';
 
 async function generateJsonLd() {
   const properties = await Property.find();

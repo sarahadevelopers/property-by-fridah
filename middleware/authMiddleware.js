@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const Admin = require('../models/admin');
+const Admin = require('/models/admin');
 
 // Secret key for signing JWTs
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';

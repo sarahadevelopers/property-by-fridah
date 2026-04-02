@@ -5,7 +5,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ========== CONFIGURATION ==========
     const CONFIG = {
-        apiBase: 'https://property-by-fridah.onrender.com',
+        apiBase: 'https://property-by-fridah-7s1w.onrender.com',
         itemsPerPage: 9,
         cacheKey: 'property_by_fridah_cache',
         cacheTTL: 10 * 60 * 1000, // 10 minutes
