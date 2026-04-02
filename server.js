@@ -909,6 +909,21 @@ app.use((err, req, res, next) => {
     });
 });
 
+app.get('/api/db-check', (req, res) => {
+    const state = mongoose.connection.readyState;
+    const states = {
+        0: 'disconnected',
+        1: 'connected',
+        2: 'connecting',
+        3: 'disconnecting'
+    };
+    res.json({
+        readyState: state,
+        status: states[state],
+        host: mongoose.connection.host || 'Not connected',
+        name: mongoose.connection.name || 'Not connected'
+    });
+});
 // ================= SERVER STARTUP =================
 // ================= SERVER STARTUP =================
 const startServer = async () => {
@@ -957,3 +972,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
