@@ -75,7 +75,7 @@ app.use(helmet({
                 "https://*.render.com",
                 "https://*.mongodb.net",
                 "https://res.cloudinary.com",
-                "https://property-by-fridah-7s1w.onrender.com",
+                "https://propertybyfridahnew-db-user.onrender.com",
                 "https://sarahadevelopers.github.io",
                 "http://localhost:3000",
                 "ws://localhost:*"
@@ -118,7 +118,7 @@ const corsOptions = {
     origin: [
         'https://propertybyfridah.com',
         'https://www.propertybyfridah.com',
-        'https://property-by-fridah-7s1w.onrender.com',
+        'https://propertybyfridahnew-db-user.onrender.com',
         'https://*.render.com',
         'https://codewithkaranja.github.io',
         'https://*.github.io',
@@ -932,7 +932,7 @@ const startServer = async () => {
     // 1. ALWAYS start the HTTP server first, binding to 0.0.0.0
     const server = app.listen(PORT, '0.0.0.0', () => {
         console.log(`✅ Server successfully bound to 0.0.0.0:${PORT}`);
-        console.log(`🌐 Health check: https://property-by-fridah-7s1w.onrender.com/health`);
+        console.log(`🌐 Health check: https://propertybyfridahnew-db-user.onrender.com/health`);
     });
 
     // Required timeout settings for Render

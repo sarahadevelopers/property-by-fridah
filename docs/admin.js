@@ -3,7 +3,7 @@
 // =========================
 
 // API Configuration
-const API_BASE = 'https://property-by-fridah.onrender.com';
+const API_BASE = 'https://propertybyfridahnew-db-user.onrender.com';
 const API_ENDPOINTS = {
     properties: `${API_BASE}/api/properties`,
     propertyById: (id) => `${API_BASE}/api/properties/${id}`,
