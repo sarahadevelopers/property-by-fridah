@@ -114,19 +114,38 @@ app.use(apiLimiter);
 app.use(compression());
 
 // ================= CORS CONFIGURATION =================
+// ================= CORS CONFIGURATION =================
 const corsOptions = {
-    origin: [
-        'https://propertybyfridah.com',
-        'https://www.propertybyfridah.com',
-        'https://propertybyfridahnew-db-user.onrender.com',
-        'https://*.render.com',
-        'https://codewithkaranja.github.io',
-        'https://*.github.io',
-        'http://localhost:3000',
-        'http://localhost:5000',
-        'http://localhost:5173',
-        'http://localhost:8080'
-    ],
+    origin: function(origin, callback) {
+        // Allowed origins
+        const allowedOrigins = [
+            'https://propertybyfridah.com',
+            'https://www.propertybyfridah.com',
+            'https://propertybyfridahnew-db-user.onrender.com',
+            'https://*.render.com',
+            'https://codewithkaranja.github.io',
+            'https://*.github.io',
+            'http://localhost:3000',
+            'http://localhost:5000',
+            'http://localhost:5173',
+            'http://localhost:8080',
+            'http://127.0.0.1:5500',
+            'http://127.0.0.1:5501',
+            null,      // Allow file:// protocol (local HTML files)
+            undefined  // Allow same-origin requests
+        ];
+        
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        // Check if origin is allowed
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn(`CORS blocked request from origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     credentials: true,
