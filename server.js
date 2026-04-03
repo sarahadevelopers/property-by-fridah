@@ -77,7 +77,10 @@ app.use(helmet({
                 "https://res.cloudinary.com",
                 "https://propertybyfridahnew-db-user.onrender.com",
                 "https://sarahadevelopers.github.io",
+                "https://*.github.io",
                 "http://localhost:3000",
+                "http://localhost:5000",
+                "http://localhost:5173",
                 "ws://localhost:*"
             ],
         }
@@ -113,37 +116,43 @@ app.use(apiLimiter);
 // ================= PERFORMANCE MIDDLEWARE =================
 app.use(compression());
 
-// ================= CORS CONFIGURATION =================
-// ================= CORS CONFIGURATION =================
+// ================= IMPROVED CORS CONFIGURATION =================
+// This allows your GitHub Pages frontend to communicate with this backend
+const allowedOrigins = [
+    'https://propertybyfridah.com',
+    'https://www.propertybyfridah.com',
+    'https://propertybyfridahnew-db-user.onrender.com',
+    'https://sarahadevelopers.github.io',      // Your GitHub Pages frontend
+    'https://codewithkaranja.github.io',
+    'https://*.github.io',                      // Any GitHub Pages site
+    'https://*.render.com',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://127.0.0.1:5500',
+    'http://127.0.0.1:5501',
+    null,                                       // For file:// protocol
+    undefined                                   // For same-origin requests
+];
+
 const corsOptions = {
     origin: function(origin, callback) {
-        // Allowed origins
-        const allowedOrigins = [
-            'https://propertybyfridah.com',
-            'https://www.propertybyfridah.com',
-            'https://propertybyfridahnew-db-user.onrender.com',
-            'https://*.render.com',
-            'https://codewithkaranja.github.io',
-            'https://*.github.io',
-            'http://localhost:3000',
-            'http://localhost:5000',
-            'http://localhost:5173',
-            'http://localhost:8080',
-            'http://127.0.0.1:5500',
-            'http://127.0.0.1:5501',
-            null,      // Allow file:// protocol (local HTML files)
-            undefined  // Allow same-origin requests
-        ];
-        
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
         
-        // Check if origin is allowed
-        if (allowedOrigins.includes(origin)) {
+        // Check if origin is allowed (exact match or wildcard)
+        const isAllowed = allowedOrigins.some(allowed => {
+            if (allowed === origin) return true;
+            if (allowed.includes('*') && origin.match(new RegExp(allowed.replace('*', '.*')))) return true;
+            return false;
+        });
+        
+        if (isAllowed) {
             callback(null, true);
         } else {
             console.warn(`CORS blocked request from origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -257,7 +266,6 @@ const uploadToCloudinary = (fileBuffer, folder = 'property-by-fridah') => {
 };
 
 // ================= ENHANCED DATABASE CONNECTION =================
-// ================= ENHANCED DATABASE CONNECTION =================
 const connectWithRetry = async (retries = 5, delay = 5000) => {
     console.log(`🔗 Attempting MongoDB connection (${retries} retries)...`);
     
@@ -277,7 +285,6 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
                 family: 4, // Force IPv4 (critical for Render)
                 heartbeatFrequencyMS: 10000,
                 retryReads: true
-                // Removed keepAlive and keepAliveInitialDelay as they are deprecated
             };
             
             // Log connection attempt (without full URI for security)
@@ -609,6 +616,8 @@ app.get('/api/properties/:id', async (req, res) => {
 app.post('/api/properties/add', upload.array('images', 10), async (req, res) => {
     try {
         console.log('🆕 Creating new property...');
+        console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
+        console.log('📸 Files received:', req.files ? req.files.length : 0);
         
         // Upload images to Cloudinary
         let uploadedImages = [];
@@ -625,6 +634,8 @@ app.post('/api/properties/add', upload.array('images', 10), async (req, res) => 
                     // Continue with other images
                 }
             }
+        } else {
+            console.log('⚠️ No images uploaded with this property');
         }
         
         // Prepare property data
@@ -642,7 +653,8 @@ app.post('/api/properties/add', upload.array('images', 10), async (req, res) => 
             size: req.body.size || '',
             description: req.body.description || '',
             whatsapp: req.body.whatsapp || '254721911181',
-            images: uploadedImages
+            images: uploadedImages,
+            features: req.body.features ? (typeof req.body.features === 'string' ? JSON.parse(req.body.features) : req.body.features) : []
         };
         
         // Validate required fields
@@ -650,7 +662,6 @@ app.post('/api/properties/add', upload.array('images', 10), async (req, res) => 
             // Clean up uploaded images if validation fails
             if (uploadedImages.length > 0) {
                 console.log('🧹 Cleaning up uploaded images due to validation error...');
-                // Note: In production, you might want to actually delete these images
             }
             
             return res.status(400).json({
@@ -672,12 +683,6 @@ app.post('/api/properties/add', upload.array('images', 10), async (req, res) => 
         });
     } catch (error) {
         console.error('❌ Error creating property:', error);
-        
-        // Clean up uploaded images if error occurs
-        if (req.files && req.files.length > 0) {
-            console.log('🧹 Cleaning up uploaded images due to error...');
-            // Note: In production, implement actual cleanup
-        }
         
         // Handle validation errors
         if (error.name === 'ValidationError') {
@@ -833,6 +838,22 @@ app.get('/api/debug/env', (req, res) => {
     res.json(safeEnv);
 });
 
+app.get('/api/db-check', (req, res) => {
+    const state = mongoose.connection.readyState;
+    const states = {
+        0: 'disconnected',
+        1: 'connected',
+        2: 'connecting',
+        3: 'disconnecting'
+    };
+    res.json({
+        readyState: state,
+        status: states[state],
+        host: mongoose.connection.host || 'Not connected',
+        name: mongoose.connection.name || 'Not connected'
+    });
+});
+
 // ================= SPA FALLBACK =================
 app.get('*', (req, res) => {
     // Skip API routes and static files
@@ -847,7 +868,8 @@ app.get('*', (req, res) => {
                 '/api/properties/add',
                 '/api/health',
                 '/api/version',
-                '/api/cors-test'
+                '/api/cors-test',
+                '/api/db-check'
             ]
         });
     }
@@ -928,22 +950,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.get('/api/db-check', (req, res) => {
-    const state = mongoose.connection.readyState;
-    const states = {
-        0: 'disconnected',
-        1: 'connected',
-        2: 'connecting',
-        3: 'disconnecting'
-    };
-    res.json({
-        readyState: state,
-        status: states[state],
-        host: mongoose.connection.host || 'Not connected',
-        name: mongoose.connection.name || 'Not connected'
-    });
-});
-// ================= SERVER STARTUP =================
 // ================= SERVER STARTUP =================
 const startServer = async () => {
     console.log('\n🚀 Starting PropertyByFridah Server...');
@@ -965,7 +971,7 @@ const startServer = async () => {
         // The server stays running, but /api/health will show DB as down
     });
 
-    // Graceful shutdown logic (kept the same)
+    // Graceful shutdown logic
     const gracefulShutdown = async (signal) => {
         console.log(`\n🔻 Received ${signal}. Shutting down gracefully...`);
         server.close(async () => {
@@ -991,4 +997,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
